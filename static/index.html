@@ -12,11 +12,13 @@
   h1{margin:0 0 12px 0;font-size:26px}
   .card{background:var(--card);border:1px solid var(--b);border-radius:16px;padding:16px;margin-top:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input,select,button{padding:10px 12px;border-radius:12px;border:1px solid var(--b);background:#0e1520;color:var(--fg)}
+  input,select,button,textarea{padding:10px 12px;border-radius:12px;border:1px solid var(--b);background:#0e1520;color:var(--fg)}
   button{background:var(--acc);border-color:var(--acc);color:#081a33;font-weight:700;cursor:pointer}
   .out{font-family:ui-monospace,Consolas,monospace;background:#0c121b;border-radius:12px;padding:12px;border:1px solid var(--b);white-space:pre}
   .mut{color:var(--mut);font-size:13px}
   .label{font-weight:700;margin-right:6px}
+  .cfgbox{display:grid;gap:10px}
+  textarea.code{width:100%;min-height:150px;resize:vertical;font-family:ui-monospace,Consolas,monospace;white-space:pre}
 </style>
 </head>
 <body>
@@ -64,6 +66,20 @@
     </div>
     <div class="out" id="b_out">—</div>
   </div>
+
+  <!-- Новый блок: генератор конфига -->
+  <div class="card">
+    <h3>Генератор конфига (JunOS)</h3>
+    <div class="cfgbox">
+      <div class="row">
+        <label class="label" for="iface">Interface:</label>
+        <input id="iface" type="text" placeholder="et-x/x/x" style="min-width:240px" value="et-x/x/x"/>
+        <button id="copy_cfg">Копировать</button>
+      </div>
+      <textarea readonly id="cfg_text" class="code" placeholder="Сначала посчитай спектр — сюда подставится конфиг с несущей в nm"></textarea>
+      <div class="mut">В конфиг подставляется центр канала (nm, 2 знака) из последнего расчёта в режимах A или B.</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -76,6 +92,21 @@ const f5 = x => Number(x).toFixed(5);
 const f1 = x => Number(x).toFixed(1);
 const f2 = x => Number(x).toFixed(2);  // nm -> 2 знака
 
+let lastNm = null; // сюда запоминаем последнюю несущую (nm) для генерации конфига
+
+function renderConfig(nmMaybe){
+  if(nmMaybe != null) lastNm = nmMaybe;
+  if(lastNm == null) return;
+  const iface = (document.getElementById('iface').value.trim() || 'et-x/x/x');
+  const nmStr = f2(lastNm);
+  const cfg =
+`configure
+set interfaces ${iface} optics-options wavelength ${nmStr}
+show | compare
+commit comment "change wavelength for ${iface} to ${nmStr} nm" and-quit`;
+  document.getElementById('cfg_text').value = cfg;
+}
+
 // === Режим A ===
 document.getElementById('a_btn').onclick = async ()=>{
   const slices = +document.getElementById('a_slices').value;
@@ -86,6 +117,7 @@ document.getElementById('a_btn').onclick = async ()=>{
   const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
   document.getElementById('a_out').textContent =
     `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${f2(nm)}`;
+  renderConfig(nm);
 };
 
 // === Режим B ===
@@ -98,6 +130,23 @@ document.getElementById('b_btn').onclick = async ()=>{
   const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
   document.getElementById('b_out').textContent =
     `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${f2(nm)}`;
+  renderConfig(nm);
+};
+
+// Перегенерация при изменении интерфейса
+document.getElementById('iface').addEventListener('input', ()=>renderConfig(null));
+
+// Копировать конфиг
+document.getElementById('copy_cfg').onclick = async ()=>{
+  const area = document.getElementById('cfg_text');
+  if(!area.value){ return }
+  try{
+    await navigator.clipboard.writeText(area.value);
+    document.getElementById('copy_cfg').textContent = 'Скопировано!';
+    setTimeout(()=>document.getElementById('copy_cfg').textContent='Копировать',1200);
+  }catch(e){
+    area.select(); document.execCommand('copy');
+  }
 };
 </script>
 </body>
