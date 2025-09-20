@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>C-band helper</title>
+<style>
+  :root{--bg:#0b0f14;--card:#0f141b;--fg:#e8eef6;--mut:#9fb0c2;--b:#1c2430;--acc:#4da3ff}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+  .wrap{max-width:960px;margin:32px auto;padding:0 16px}
+  h1{margin:0 0 12px 0;font-size:26px}
+  .card{background:var(--card);border:1px solid var(--b);border-radius:16px;padding:16px;margin-top:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input,select,button{padding:10px 12px;border-radius:12px;border:1px solid var(--b);background:#0e1520;color:var(--fg)}
+  button{background:var(--acc);border-color:var(--acc);color:#081a33;font-weight:700;cursor:pointer}
+  .out{font-family:ui-monospace,Consolas,monospace;background:#0c121b;border-radius:12px;padding:12px;border:1px solid var(--b);white-space:pre}
+  .mut{color:var(--mut);font-size:13px}
+  .label{font-weight:700;margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>C-band helper</h1>
+
+  <div class="card">
+    <h3>Инструкция</h3>
+    <div class="mut">
+      <ul>
+        <li>Один канал занимает <b>6</b> или <b>7</b> слайсов. 1 слайс = <b>12.5 ГГц</b> → ширина: 6 → <b>75.0</b> ГГц, 7 → <b>87.5</b> ГГц.</li>
+        <li>Центральная несущая привязывается к сетке <b>6.25 ГГц</b>, границы канала — к сетке <b>12.5 ГГц</b>.</li>
+        <li>Ввод в режиме A: укажи центральную несущую в <b>THz</b> или в <b>nm</b> — инструмент сам распознает единицы (можно писать «1534.84», «1534,84 nm», «195.325 THz» и т.п.).</li>
+        <li>Вывод всегда в <b>THz</b>, дополнительно показывается центр в <b>nm</b>.</li>
+        <li>В режиме B укажи <b>начало</b> спектра в THz и число слайсов — получишь границы и центр (в THz и nm).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Режим A: Рассчёт спектра от Центра (Thz/nm)</h3>
+    <div class="row">
+      <label class="label">Слайсов:</label>
+      <select id="a_slices">
+        <option value="6">6</option>
+        <option value="7">7</option>
+      </select>
+      <input id="a_value" type="text" placeholder="введи центр: 1534.84 (nm) или 195.325 (THz)"/>
+      <button id="a_btn">Посчитать</button>
+    </div>
+    <div class="mut" style="margin-top:6px">Вывод в Thz. Значение в nm указано отдельной строкой</div>
+    <div class="out" id="a_out">—</div>
+  </div>
+
+  <div class="card">
+    <h3>Режим B: Рассчёт спектра от Начала (Thz)</h3>
+    <div class="row">
+      <label class="label">Слайсов:</label>
+      <select id="b_slices">
+        <option value="6">6</option>
+        <option value="7">7</option>
+      </select>
+      <input id="b_start" type="number" step="0.00001" placeholder="начало, THz (например 194.40000)"/>
+      <button id="b_btn">Посчитать</button>
+    </div>
+    <div class="out" id="b_out">—</div>
+  </div>
+</div>
+
+<script>
+async function post(url, data){
+  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  if(!r.ok){throw new Error(await r.text())}
+  return r.json();
+}
+const f5 = x => Number(x).toFixed(5);
+const f1 = x => Number(x).toFixed(1);
+
+document.getElementById('a_btn').onclick = async ()=>{
+  const slices = +document.getElementById('a_slices').value;
+  const value  = document.getElementById('a_value').value.trim();
+  if(!value){ return }
+  const res = await post('/calc_center',{slices, value});
+  const [a,b] = res.band;
+  const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
+  // компактный вывод в THz и отдельной строкой центр в nm
+  document.getElementById('a_out').textContent =
+    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${nm.toFixed(5)}`;
+};
+
+document.getElementById('b_btn').onclick = async ()=>{
+  const slices = +document.getElementById('b_slices').value;
+  const start_thz = parseFloat(document.getElementById('b_start').value);
+  if(!start_thz && start_thz !== 0){ return }
+  const res = await post('/calc_from_start',{slices, start_thz});
+  const [a,b] = res.band;
+  const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
+  document.getElementById('b_out').textContent =
+    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${nm.toFixed(5)}`;
+};
+</script>
+</body>
+</html>
