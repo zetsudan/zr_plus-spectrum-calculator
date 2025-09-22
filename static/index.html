@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -19,6 +19,24 @@
   .label{font-weight:700;margin-right:6px}
   .cfgbox{display:grid;gap:10px}
   textarea.code{width:100%;min-height:150px;resize:vertical;font-family:ui-monospace,Consolas,monospace;white-space:pre}
+
+  /* Hint buttons with tooltips */
+  .hint{
+    position:relative; width:22px; height:22px; line-height:22px;
+    display:inline-grid; place-items:center; flex:0 0 22px;
+    border-radius:999px; border:1px solid #2a3a52; background:#0c1622; color:#9fc6ff;
+    font-weight:800; cursor:help; user-select:none;
+  }
+  .hint::after{
+    content: attr(data-tip);
+    position:absolute; left:100%; top:50%; transform:translate(10px,-50%);
+    background:#0c121b; color:var(--fg); border:1px solid #243246;
+    padding:8px 10px; border-radius:10px; max-width:320px; width:max-content;
+    font-size:12px; line-height:1.35; white-space:normal; opacity:0; pointer-events:none;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+    transition:opacity .15s ease;
+  }
+  .hint:hover::after{opacity:1}
 </style>
 </head>
 <body>
@@ -26,58 +44,66 @@
   <h1>ZR+ Spectrum calculator</h1>
 
   <div class="card">
-    <h3>Инструкция</h3>
+    <h3>Guide</h3>
     <div class="mut">
       <ul>
-        <li>Один канал занимает <b>6</b> или <b>7</b> слайсов. 1 слайс = <b>12.5 ГГц</b> → ширина: 6 → <b>75.0</b> ГГц, 7 → <b>87.5</b> ГГц.</li>
-        <li>Центральная несущая привязывается к сетке <b>6.25 ГГц</b>, границы канала — к сетке <b>12.5 ГГц</b>.</li>
-        <li>Ввод в режиме A: укажи центральную несущую в <b>THz</b> или в <b>nm</b> — инструмент сам распознаёт единицы (можно писать «1534.84», «1534,84 nm», «195.325 THz» и т.п.).</li>
-        <li>Вывод всегда в <b>THz</b>, дополнительно показывается центр в <b>nm</b>.</li>
-        <li>В режиме B укажи <b>начало</b> спектра в THz и число слайсов — получишь границы и центр (в THz и nm).</li>
+        <li>One channel occupies <b>6</b> or <b>7</b> slices. 1 slice = <b>12.5 GHz</b> → total width: 6 → <b>75.0</b> GHz, 7 → <b>87.5</b> GHz.</li>
+        <li>Center is aligned to the <b>6.25 GHz</b> grid; edges are aligned to the <b>12.5 GHz</b> grid.</li>
+        <li>Mode A input: enter center either in <b>THz</b> or in <b>nm</b> — units are auto-detected (e.g. “1534.84”, “1534,84 nm”, “195.325 THz”).</li>
+        <li>Output is always in <b>THz</b>, plus the center shown in <b>nm</b> (separate line).</li>
+        <li>Mode B input: enter the <b>start</b> of the band in THz + number of slices — you’ll get band edges and center (in THz and nm).</li>
       </ul>
     </div>
   </div>
 
   <div class="card">
-    <h3>Режим A: Рассчёт спектра от Центра (THz/nm)</h3>
+    <h3>Mode A: Compute from Center (THz/nm)</h3>
     <div class="row">
-      <label class="label">Слайсов:</label>
+      <label class="label">Slices:</label>
       <select id="a_slices">
         <option value="6">6</option>
         <option value="7">7</option>
       </select>
-      <input id="a_value" type="text" placeholder="введи центр: 1534.84 (nm) или 195.325 (THz)"/>
-      <button id="a_btn">Посчитать</button>
+      <button class="hint" type="button" data-tip="Channel width: 6 slices = 75.0 GHz, 7 slices = 87.5 GHz.">?</button>
+
+      <input id="a_value" type="text" placeholder="center: 1534.84 (nm) or 195.325 (THz)"/>
+      <button class="hint" type="button" data-tip="Enter center frequency in THz or wavelength in nm. Units are auto-detected; decimals with dot or comma are accepted.">?</button>
+
+      <button id="a_btn">Compute</button>
     </div>
-    <div class="mut" style="margin-top:6px">Вывод в THz. Значение в nm указано отдельной строкой</div>
+    <div class="mut" style="margin-top:6px">Output in THz. Center (nm) is printed on a separate line.</div>
     <div class="out" id="a_out">—</div>
   </div>
 
   <div class="card">
-    <h3>Режим B: Рассчёт спектра от Начала (THz)</h3>
+    <h3>Mode B: Compute from Start (THz)</h3>
     <div class="row">
-      <label class="label">Слайсов:</label>
+      <label class="label">Slices:</label>
       <select id="b_slices">
         <option value="6">6</option>
         <option value="7">7</option>
       </select>
-      <input id="b_start" type="number" step="0.00001" placeholder="начало, THz (например 194.40000)"/>
-      <button id="b_btn">Посчитать</button>
+      <button class="hint" type="button" data-tip="Channel width: 6 slices = 75.0 GHz, 7 slices = 87.5 GHz.">?</button>
+
+      <input id="b_start" type="number" step="0.00001" placeholder="start, THz (e.g. 194.40000)"/>
+      <button class="hint" type="button" data-tip="Enter lower edge (start) of the band in THz on the 12.5 GHz grid.">?</button>
+
+      <button id="b_btn">Compute</button>
     </div>
     <div class="out" id="b_out">—</div>
   </div>
 
-  <!-- Новый блок: генератор конфига -->
   <div class="card">
-    <h3>Генератор конфига (JunOS)</h3>
+    <h3>Router config (JunOS)</h3>
     <div class="cfgbox">
       <div class="row">
         <label class="label" for="iface">Interface:</label>
         <input id="iface" type="text" placeholder="et-x/x/x" style="min-width:240px" value="et-x/x/x"/>
-        <button id="copy_cfg">Копировать</button>
+        <button class="hint" type="button" data-tip="Edit the target interface. The wavelength (nm, 2 decimals) comes from the last calculation in Mode A or B.">?</button>
+        <button id="copy_cfg">Copy</button>
       </div>
-      <textarea readonly id="cfg_text" class="code" placeholder="Сначала посчитай спектр — сюда подставится конфиг с несущей в nm"></textarea>
-      <div class="mut">В конфиг подставляется центр канала (nm, 2 знака) из последнего расчёта в режимах A или B.</div>
+      <textarea readonly id="cfg_text" class="code" placeholder="Compute first — the config with center wavelength (nm) will appear here"></textarea>
+      <div class="mut">The config uses the channel center in nm (2 decimals) from the last calculation.</div>
     </div>
   </div>
 </div>
@@ -90,9 +116,9 @@ async function post(url, data){
 }
 const f5 = x => Number(x).toFixed(5);
 const f1 = x => Number(x).toFixed(1);
-const f2 = x => Number(x).toFixed(2);  // nm -> 2 знака
+const f2 = x => Number(x).toFixed(2);  // nm -> 2 decimals
 
-let lastNm = null; // сюда запоминаем последнюю несущую (nm) для генерации конфига
+let lastNm = null; // remember last wavelength (nm) to generate config
 
 function renderConfig(nmMaybe){
   if(nmMaybe != null) lastNm = nmMaybe;
@@ -107,7 +133,7 @@ commit comment "change wavelength for ${iface} to ${nmStr} nm" and-quit`;
   document.getElementById('cfg_text').value = cfg;
 }
 
-// === Режим A ===
+// === Mode A ===
 document.getElementById('a_btn').onclick = async ()=>{
   const slices = +document.getElementById('a_slices').value;
   const value  = document.getElementById('a_value').value.trim();
@@ -116,11 +142,11 @@ document.getElementById('a_btn').onclick = async ()=>{
   const [a,b] = res.band;
   const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
   document.getElementById('a_out').textContent =
-    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${f2(nm)}`;
+    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nCenter (nm): ${f2(nm)}`;
   renderConfig(nm);
 };
 
-// === Режим B ===
+// === Mode B ===
 document.getElementById('b_btn').onclick = async ()=>{
   const slices = +document.getElementById('b_slices').value;
   const start_thz = parseFloat(document.getElementById('b_start').value);
@@ -129,21 +155,22 @@ document.getElementById('b_btn').onclick = async ()=>{
   const [a,b] = res.band;
   const c = res.center_thz, w = res.width_ghz, nm = res.center_nm;
   document.getElementById('b_out').textContent =
-    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nЦентр (nm): ${f2(nm)}`;
+    `(${f5(a)},${f5(b)})\n(${f5(c)},${f1(w)})\nCenter (nm): ${f2(nm)}`;
   renderConfig(nm);
 };
 
-// Перегенерация при изменении интерфейса
+// Regenerate config when interface changes
 document.getElementById('iface').addEventListener('input', ()=>renderConfig(null));
 
-// Копировать конфиг
+// Copy config
 document.getElementById('copy_cfg').onclick = async ()=>{
   const area = document.getElementById('cfg_text');
   if(!area.value){ return }
   try{
     await navigator.clipboard.writeText(area.value);
-    document.getElementById('copy_cfg').textContent = 'Скопировано!';
-    setTimeout(()=>document.getElementById('copy_cfg').textContent='Копировать',1200);
+    const btn = document.getElementById('copy_cfg');
+    btn.textContent = 'Copied!';
+    setTimeout(()=>btn.textContent='Copy',1200);
   }catch(e){
     area.select(); document.execCommand('copy');
   }
